@@ -12,7 +12,7 @@ Bu doküman, sistemin istemci mimarisini, bulut servislerini, yapay zekâ katman
 
 ---
 
-## 📌 1. Seviye: Sistem Bağlam Diyagramı (System Context)
+## 📌 1. Seviye: Sistem Bağlam Diyagramı (System Context - Level 1)
 
 Kullanıcının sistemle olan etkileşimini, platform sınırlarını ve dış servis entegrasyonlarını özetler.
 
@@ -48,54 +48,52 @@ flowchart TB
 
     BackendProxy <-->|"Structured Prompting & JSON Output"| Gemini
     Security -.->|"Cihaz Doğrulama Sağlayıcısı"| BackendProxy
+```
 
 ---
 
-## 2. Seviye: Kapsayıcı Diyagramı (Container Diagram – Level 2)
+## 📌 2. Seviye: Kapsayıcı Diyagramı (Container Diagram - Level 2)
 
-Bu diyagram; sistemin yüksek seviyeli teknik mimarisini, sorumluluk alanlarına göre ayrılmış konteynerlerini (istemci, sunucu katmanı, veritabanı) ve bu parçaların birbirleriyle hangi protokoller üzerinden haberleştiğini gösterir.
+Bu diyagram; sistemin yüksek seviyeli teknik mimarisini, sorumluluk alanlarına göre ayrılmış servisleri (istemci, sunucusuz backend, veritabanı, depolama) ve aralarındaki ağ/protokol bağlantılarını modeller.
 
 ```mermaid
-flowchart TB
-    User(["🏋️‍♂️ Sporcu / Mobil Kullanıcı"])
+C4Container
+title Container Diyagramı (Level 2) - Pro AI Coaching
 
-    subgraph ClientApp ["Mobil İstemci (Mobile Client)"]
-        Flutter["📱 Flutter Mobil Uygulaması<br/><b>[Flutter & Dart]</b><br/>• Reaktif UI & BLoC Durum Yönetimi<br/>• Ses Kaydı & Canlı Form Kamerası<br/>• Çevrimdışı Önbellek (Hive / SQLite)"]
-    end
+Person(user, "Sporcu / Kullanıcı", "Antrenman takibi yapan, yapay zekâ destekli form ve beslenme analizi alan son kullanıcı.")
 
-    subgraph BackendGateway ["Uygulama & API Katmanı (Backend Services)"]
-        FastAPI["⚡ Core Backend & API Gateway<br/><b>[Python / FastAPI]</b><br/>• REST API & SSE (Server-Sent Events) Akış Motoru<br/>• Rate Limiter & Token Throttling<br/>• Prompt Orchestrator & Semantik Arama Katmanı<br/>• Pydantic Tabanlı Yapılandırılmış JSON Doğrulayıcı"]
-    end
+Container_Boundary(c1, "Pro AI Coaching Platform Sınırları") {
+    Container(mobile_app, "Mobil İstemci Uygulaması", "Flutter, Dart", "Clean Architecture, reaktif durum yönetimi, yerel önbellek, video oynatma motoru (Media3/ExoPlayer).")
+    Container(backend_proxy, "Cloud Functions Middleware", "Node.js / Cloud Functions", "Güvenli API Gateway. Token kota yönetimi, prompt orkestrasyonu, App Check ve abonelik doğrulama.")
+    ContainerDb(firestore, "Cloud Firestore", "NoSQL Document DB", "Kullanıcı profilleri, antrenman geçmişi, set/tekrar kayıtları ve progresif aşırı yüklenme verileri.")
+    ContainerDb(storage, "Cloud Storage", "Obje Depolama", "Öğün fotoğrafları, egzersiz form analizi video ve görselleri.")
+    Container(auth, "Firebase Authentication", "Auth Servisi", "Kullanıcı kaydı, giriş, oturum ve JWT tabanlı kimlik yönetimi.")
+}
 
-    subgraph DataTier ["Veri & Bellek Katmanı (Data Tier)"]
-        Postgres[("🗄️ İlişkisel & Vektör Veritabanı<br/><b>[PostgreSQL + pgvector]</b><br/>• Kullanıcı Profilleri & Antrenman Geçmişi<br/>• Egzersiz ve Hipertrofi Vektör Gömümleri (Embeddings)<br/>• Semantik Önbellek (Semantic Cache)")]
-        RedisCache[("⚡ Önbellek & Kuyruk (In-Memory)<br/><b>[Redis]</b><br/>• Oturum & Rate-Limit Kotaları<br/>• Hızlı Yanıt Önbellekleme")]
-    end
+System_Ext(gemini, "Google Gemini API / Vertex AI", "Büyük Dil ve Çok Modlu (Multimodal) Vizyon Modeli. Öğün fotoğrafı analizi ve dinamik antrenman revizyonu.")
+System_Ext(revenuecat, "RevenueCat & StoreKit", "Apple App Store ve Google Play Billing abonelik/paywall doğrulama ve gelir altyapısı.")
+System_Ext(app_check, "Firebase App Check", "Play Integrity API ve Apple DeviceCheck tabanlı istemci bütünlük koruması.")
 
-    subgraph ExternalEcosystem ["Harici Servisler & Güvenlik Sağlayıcıları"]
-        Auth["🔑 Firebase Authentication<br/><b>[OAuth / JWT]</b>"]
-        Storage["📦 Firebase Cloud Storage<br/><b>[Blob / Medya Deposu]</b>"]
-        AppCheck["🛡️ Firebase App Check<br/><b>[Play Integrity / DeviceCheck]</b>"]
-        Gemini["🧠 Google Gemini 1.5 API<br/><b>[LLM & Vision Modelleri]</b>"]
-        RevenueCat["💳 RevenueCat & Mağaza Faturalandırma<br/><b>[StoreKit / Google Play Billing]</b>"]
-    end
+Rel(user, mobile_app, "Etkileşime girer", "Flutter UI")
+Rel(mobile_app, auth, "Giriş yapar, kimlik doğrular", "Firebase Auth SDK / HTTPS")
+Rel(mobile_app, firestore, "Antrenman ve profil verilerini senkronize eder", "Firestore SDK / gRPC")
+Rel(mobile_app, storage, "Öğün fotoğrafı ve form videosu yükler", "Cloud Storage SDK")
+Rel(mobile_app, revenuecat, "Abonelik ve paywall durumunu sorgular", "RevenueCat SDK / HTTPS")
+Rel(mobile_app, app_check, "Cihaz bütünlük kanıtı (Attestation token) alır", "Play Integrity / DeviceCheck")
 
-    %% Kullanıcı - İstemci
-    User -->|"Dokunma, Ses ve Kamera Girdisi"| Flutter
+Rel(mobile_app, backend_proxy, "Yapay zekâ analiz ve koçluk istekleri gönderir", "HTTPS / JSON (JWT + App Check)")
+Rel(backend_proxy, gemini, "Yapılandırılmış JSON şemalarıyla prompt iletir, çıkarım alır", "HTTPS / REST API")
+Rel(backend_proxy, revenuecat, "Aktif abonelik yetkilerini (Entitlement) doğrular", "REST API")
+Rel(backend_proxy, firestore, "İşlenmiş koçluk verilerini ve analiz loglarını yazar", "Firebase Admin SDK")
+```
 
-    %% İstemci - Güvenlik & Harici
-    Flutter -->|"1. Kimlik Doğrulama (JWT)"| Auth
-    Flutter -->|"2. Cihaz Bütünlük Onayı (App Check Token)"| AppCheck
-    Flutter -->|"3. Video/Görsel Yükleme (Form & Yemek)"| Storage
-    Flutter -->|"4. Abonelik Satın Alma & Paywall"| RevenueCat
+### Kapsayıcı ve Protokol Özeti
 
-    %% İstemci - Backend İletişimi
-    Flutter <-->|"HTTPS / REST (JSON)<br/>+ SSE (Kelime Akışı / Streaming)<br/>[Bearer Token + App Check Header]"| FastAPI
-
-    %% Backend - Veritabanı
-    FastAPI <-->|"AsyncPG / SQLAlchemy (TCP :5432)<br/>CRUD & Kosinüs Benzerlik Sorguları"| Postgres
-    FastAPI <-->|"Redis Protocol (TCP :6379)<br/>Token & Limit Kontrolü"| RedisCache
-
-    %% Backend - Dış Entegrasyonlar
-    FastAPI -->|"Webhook / Entitlement Doğrulama"| RevenueCat
-    FastAPI <-->|"HTTPS / gRPC<br/>Yapılandırılmış İstemler (Structured Prompts)"| Gemini
+| Kapsayıcı / Bileşen | Teknoloji | İletişim Protokolü | Görev ve Sorumluluk |
+| :--- | :--- | :--- | :--- |
+| **Mobil İstemci** | Flutter, Dart | Yerel SDK & HTTPS | Kullanıcı arayüzü, reaktif durum yönetimi ve yerel medya akışı. |
+| **Backend Middleware** | Firebase Cloud Functions | HTTPS / REST (JSON) | API anahtarı gizleme, hız sınırlama (rate-limiting) ve prompt orkestrasyonu. |
+| **Veritabanı** | Cloud Firestore | gRPC / Firestore SDK | Çevrimdışı destekli antrenman logları, kullanıcı hedefleri ve metrik takibi. |
+| **Medya Depolama** | Cloud Storage | HTTPS / Storage SDK | Yemek fotoğrafları ve form analizi videolarının güvenli saklanması. |
+| **Yapay Zekâ Motoru**| Gemini API / Vertex AI | HTTPS / REST | Görselden makro çıkarma, anlık egzersiz alternatifi ve koçluk akışı. |
+| **Uç Nokta Doğrulama**| Firebase App Check | Play Integrity / DeviceCheck | Sahte istemcileri, emülatörleri ve yetkisiz API sızıntılarını engelleme. |
