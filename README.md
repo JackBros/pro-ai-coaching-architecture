@@ -48,3 +48,54 @@ flowchart TB
 
     BackendProxy <-->|"Structured Prompting & JSON Output"| Gemini
     Security -.->|"Cihaz Doğrulama Sağlayıcısı"| BackendProxy
+
+---
+
+## 2. Seviye: Kapsayıcı Diyagramı (Container Diagram – Level 2)
+
+Bu diyagram; sistemin yüksek seviyeli teknik mimarisini, sorumluluk alanlarına göre ayrılmış konteynerlerini (istemci, sunucu katmanı, veritabanı) ve bu parçaların birbirleriyle hangi protokoller üzerinden haberleştiğini gösterir.
+
+```mermaid
+flowchart TB
+    User(["🏋️‍♂️ Sporcu / Mobil Kullanıcı"])
+
+    subgraph ClientApp ["Mobil İstemci (Mobile Client)"]
+        Flutter["📱 Flutter Mobil Uygulaması<br/><b>[Flutter & Dart]</b><br/>• Reaktif UI & BLoC Durum Yönetimi<br/>• Ses Kaydı & Canlı Form Kamerası<br/>• Çevrimdışı Önbellek (Hive / SQLite)"]
+    end
+
+    subgraph BackendGateway ["Uygulama & API Katmanı (Backend Services)"]
+        FastAPI["⚡ Core Backend & API Gateway<br/><b>[Python / FastAPI]</b><br/>• REST API & SSE (Server-Sent Events) Akış Motoru<br/>• Rate Limiter & Token Throttling<br/>• Prompt Orchestrator & Semantik Arama Katmanı<br/>• Pydantic Tabanlı Yapılandırılmış JSON Doğrulayıcı"]
+    end
+
+    subgraph DataTier ["Veri & Bellek Katmanı (Data Tier)"]
+        Postgres[("🗄️ İlişkisel & Vektör Veritabanı<br/><b>[PostgreSQL + pgvector]</b><br/>• Kullanıcı Profilleri & Antrenman Geçmişi<br/>• Egzersiz ve Hipertrofi Vektör Gömümleri (Embeddings)<br/>• Semantik Önbellek (Semantic Cache)")]
+        RedisCache[("⚡ Önbellek & Kuyruk (In-Memory)<br/><b>[Redis]</b><br/>• Oturum & Rate-Limit Kotaları<br/>• Hızlı Yanıt Önbellekleme")]
+    end
+
+    subgraph ExternalEcosystem ["Harici Servisler & Güvenlik Sağlayıcıları"]
+        Auth["🔑 Firebase Authentication<br/><b>[OAuth / JWT]</b>"]
+        Storage["📦 Firebase Cloud Storage<br/><b>[Blob / Medya Deposu]</b>"]
+        AppCheck["🛡️ Firebase App Check<br/><b>[Play Integrity / DeviceCheck]</b>"]
+        Gemini["🧠 Google Gemini 1.5 API<br/><b>[LLM & Vision Modelleri]</b>"]
+        RevenueCat["💳 RevenueCat & Mağaza Faturalandırma<br/><b>[StoreKit / Google Play Billing]</b>"]
+    end
+
+    %% Kullanıcı - İstemci
+    User -->|"Dokunma, Ses ve Kamera Girdisi"| Flutter
+
+    %% İstemci - Güvenlik & Harici
+    Flutter -->|"1. Kimlik Doğrulama (JWT)"| Auth
+    Flutter -->|"2. Cihaz Bütünlük Onayı (App Check Token)"| AppCheck
+    Flutter -->|"3. Video/Görsel Yükleme (Form & Yemek)"| Storage
+    Flutter -->|"4. Abonelik Satın Alma & Paywall"| RevenueCat
+
+    %% İstemci - Backend İletişimi
+    Flutter <-->|"HTTPS / REST (JSON)<br/>+ SSE (Kelime Akışı / Streaming)<br/>[Bearer Token + App Check Header]"| FastAPI
+
+    %% Backend - Veritabanı
+    FastAPI <-->|"AsyncPG / SQLAlchemy (TCP :5432)<br/>CRUD & Kosinüs Benzerlik Sorguları"| Postgres
+    FastAPI <-->|"Redis Protocol (TCP :6379)<br/>Token & Limit Kontrolü"| RedisCache
+
+    %% Backend - Dış Entegrasyonlar
+    FastAPI -->|"Webhook / Entitlement Doğrulama"| RevenueCat
+    FastAPI <-->|"HTTPS / gRPC<br/>Yapılandırılmış İstemler (Structured Prompts)"| Gemini
