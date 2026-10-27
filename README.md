@@ -97,3 +97,45 @@ Rel(backend_proxy, firestore, "İşlenmiş koçluk verilerini ve analiz logları
 | **Medya Depolama** | Cloud Storage | HTTPS / Storage SDK | Yemek fotoğrafları ve form analizi videolarının güvenli saklanması. |
 | **Yapay Zekâ Motoru**| Gemini API / Vertex AI | HTTPS / REST | Görselden makro çıkarma, anlık egzersiz alternatifi ve koçluk akışı. |
 | **Uç Nokta Doğrulama**| Firebase App Check | Play Integrity / DeviceCheck | Sahte istemcileri, emülatörleri ve yetkisiz API sızıntılarını engelleme. |
+
+---
+
+## 📌 3. Seviye: Bileşen Diyagramı (Component Diagram - Level 3: Backend & RAG Pipeline)
+
+Bu diyagram; Python / FastAPI backend kapsayıcısının iç mimarisini, veri doğrulama mantığını, pgvector semantik arama hattını ve harici LLM servisleri ile kurulan RAG (Retrieval-Augmented Generation) orkestrasyonunu modeller.
+
+```mermaid
+C4Component
+title Component Diyagramı (Level 3) - Backend & RAG Pipeline
+
+Container(mobile_app, "Mobil İstemci (Flutter)", "Dart, Riverpod", "HTTP istekleri ve kullanıcı bağlamını iletir.")
+ContainerDb(pg_db, "PostgreSQL & pgvector", "SQL Veritabanı", "Kullanıcı verileri, egzersiz kayıtları ve gömme (embedding) vektörleri.")
+System_Ext(gemini_api, "Google Gemini API", "LLM Motoru", "Bağlamla zenginleştirilmiş antrenman/beslenme çıkarımları üretir.")
+
+Container_Boundary(api_boundary, "FastAPI Backend Katmanı") {
+    Component(auth_controller, "Auth & Security Handler", "FastAPI / JWT", "Kullanıcı kimlik doğrulaması, yetki kontrolleri ve rate-limit denetimi.")
+    Component(workout_router, "Workout & Telemetry Router", "FastAPI Endpoints", "Set, tekrar, ağırlık ve RPE verilerini karşılayan API uçları.")
+    Component(schema_validator, "Pydantic Validator", "Pydantic v2", "Gelen isteklerin tip doğrulaması ve şema standardizasyonu.")
+    Component(rag_orchestrator, "RAG Orchestrator", "Python Async Core", "Sorgu analizi, prompt şablonlama ve LLM istek akışını yönetir.")
+    Component(vector_repo, "Vector Repository", "asyncpg / SQLAlchemy", "Kullanıcı geçmişinden semantik benzerlik sorguları çeker.")
+    Component(gemini_client, "Gemini SDK Client", "Google AI SDK", "Prompt ve vektör bağlamını optimize parametrelerle Gemini'ye iletir.")
+}
+
+Rel(mobile_app, auth_controller, "JWT ile istek başlatır", "HTTPS / JSON")
+Rel(mobile_app, workout_router, "Antrenman verisi / analiz talebi iletir", "HTTPS / JSON")
+
+Rel(workout_router, schema_validator, "Girdiyi doğrulatır", "Python Call")
+Rel(schema_validator, rag_orchestrator, "Doğrulanmış parametreleri aktarır", "In-Memory")
+
+Rel(rag_orchestrator, vector_repo, "Kullanıcı bağlamı ve benzer verileri sorgular", "Async Call")
+Rel(vector_repo, pg_db, "Semantik vektör araması yapar (<-> operatörü)", "SQL / pgvector")
+
+Rel(rag_orchestrator, gemini_client, "Zenginleştirilmiş prompt bağlamını verir", "Structured Prompt")
+Rel(gemini_client, gemini_api, "Analiz çıkarımı talep eder", "HTTPS REST")
+```
+
+### Bileşen Düzeyi Mimari Detaylar
+
+1. **RAG Orkestrasyonu:** Kullanıcı doğrudan yapay zekâya bırakılmaz; Vector Repository üzerinden kullanıcının son antrenman geçmişi, sakatlık geçmişi ve hacim yükü çekilerek prompt şablonuna bağlam (context) olarak eklenir. Halüsinasyon riski sıfıra indirilir.
+2. **Tip Güvenliği (Pydantic v2):** Mobil taraftan gelen eksik veya hatalı set/tekrar verileri sunucu çekirdeğine ulaşmadan sınırda filtrelenir.
+3. **Asenkron Veritabanı Erişimi:** Vektör sorguları ve ilişkisel veri okuma işlemleri asyncpg havuzu üzerinden non-blocking olarak yürütülür.
